@@ -1,0 +1,49 @@
+---
+# Phase 2 — Tailscale with SSH. After this: switch ansible_host to the 100.x,
+# ansible_user to ops, and close 22 in the Hostinger firewall and in ufw.
+- name: Tailscale
+  hosts: lab
+  become: true
+
+  tasks:
+    - name: Install tailscale (official script picks the right repo for the release — 26.04 included)
+      ansible.builtin.shell: set -o pipefail && curl -fsSL https://tailscale.com/install.sh | sh
+      args: { creates: /usr/bin/tailscale, executable: /bin/bash }
+
+    - name: tailscaled running
+      ansible.builtin.service: { name: tailscaled, enabled: true, state: started }
+
+    - name: Current state
+      ansible.builtin.command: tailscale status --json
+      register: ts
+      changed_when: false
+      failed_when: false
+
+    - name: tailscale up (idempotent)
+      ansible.builtin.command: >
+        tailscale up
+        --authkey={{ tailscale_authkey }}
+        --ssh
+        --hostname={{ hostname }}
+        --advertise-tags=tag:server
+        --accept-dns=true
+      when: ts.rc != 0 or (ts.stdout | from_json).BackendState != 'Running'
+      changed_when: true
+      no_log: true
+
+    - name: Tailscale IP
+      ansible.builtin.command: tailscale ip -4
+      register: tsip
+      changed_when: false
+
+    - name: Show
+      ansible.builtin.debug:
+        msg: >-
+          Tailscale IP: {{ tsip.stdout }} —
+          1) change ansible_host in the inventory;
+          2) remove 22/tcp from the Hostinger firewall;
+          3) run: ansible-playbook playbooks/tailscale.yml -e close_public_ssh=true
+
+    - name: Close public SSH in ufw (only when requested)
+      community.general.ufw: { rule: allow, port: "22", proto: tcp, delete: true }
+      when: close_public_ssh | default(false) | bool

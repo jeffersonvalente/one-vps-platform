@@ -1,0 +1,7 @@
+---
+# ansible-galaxy install -r requirements.yml
+collections:
+  - name: community.general
+  - name: community.sops
+  - name: ansible.posix
+  - name: kubernetes.core

@@ -1,0 +1,29 @@
+// Tailscale ACL — onevps
+// General rule: my devices (tag:client) reach everything on the server;
+// the server initiates connections to nobody.
+{
+  "tagOwners": {
+    "tag:server": ["autogroup:admin"],
+    "tag:client": ["autogroup:admin"],
+  },
+
+  "acls": [
+    // my devices → server, any port
+    { "action": "accept", "src": ["tag:client", "autogroup:member"], "dst": ["tag:server:*"] },
+  ],
+
+  // Tailscale SSH: log in as ops/personal/client-a/client-b without opening public 22
+  "ssh": [
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": ["tag:server"],
+      "users": ["ops", "personal", "client-a", "client-b"],
+    },
+  ],
+
+  "nodeAttrs": [
+    // enable Funnel only if one day something must be exposed without Cloudflare
+    // { "target": ["tag:server"], "attr": ["funnel"] },
+  ],
+}

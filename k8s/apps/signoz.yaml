@@ -1,0 +1,88 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: signoz
+  namespace: argocd
+  annotations: { argocd.argoproj.io/sync-wave: "2" }
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.signoz.io
+      chart: signoz
+      targetRevision: 0.135.0 # signoz/* images (post-Bitnami)
+      helm:
+        valuesObject:
+          global:
+            storageClass: local-path
+          # -------- BUDGET: whole SigNoz ≤ ~4 GB --------
+          clickhouse:
+            replicasCount: 1
+            persistence: { size: 40Gi }
+            resources:
+              requests: { cpu: 500m, memory: 1Gi }
+              limits: { cpu: 2, memory: 3Gi } # 2Gi was for an empty lab; OTel Demo (14 svcs) is real load
+            # ClickHouse tends to use everything it sees; cap it via config too
+            profiles:
+              default:
+                max_memory_usage: "2000000000" # 2 GB per query
+                max_server_memory_usage_to_ram_ratio: "0.9"
+                # sampling profiler off: it fed system.trace_log (20 GiB, ~2 cores on merges alone)
+                query_profiler_real_time_period_ns: "0"
+                query_profiler_cpu_time_period_ns: "0"
+            # Self-diagnostic logs off (the other system.*_log tables already get a TTL from the operator).
+            # Their merges failed on the memory limit and were retried endlessly (~2 cores):
+            # text_log wrote its own error in a loop; metric_log/query_metric_log have >1000 columns.
+            # To re-enable (e.g. to test the client-app): delete this block and the two *_period_ns above.
+            files:
+              config.d/zz-no-trace-log.xml: |
+                <clickhouse>
+                  <trace_log remove="1"/>
+                  <text_log remove="1"/>
+                  <metric_log remove="1"/>
+                  <query_metric_log remove="1"/>
+                </clickhouse>
+            zookeeper:
+              replicaCount: 1
+              # 384Mi → OOMKilled on 2026-10-24 when receiving ~9k series (ClickHouse part metadata)
+              heapSize: 512 # MB, JVM; leaves ~40% of the limit for off-heap
+              resources:
+                requests: { cpu: 50m, memory: 512Mi }
+                limits: { memory: 1Gi }
+          signoz:
+            replicaCount: 1
+            resources:
+              requests: { cpu: 100m, memory: 256Mi }
+              limits: { memory: 768Mi }
+            ingress:
+              enabled: true
+              className: nginx
+              annotations:
+                cert-manager.io/cluster-issuer: letsencrypt
+              hosts:
+                - host: signoz.lab.example.com # private (Tailscale IP)
+                  paths: [{ path: /, pathType: Prefix, port: 8080 }]
+              tls:
+                - secretName: signoz-tls
+                  hosts: [signoz.lab.example.com]
+          otelCollector:
+            replicaCount: 1
+            resources:
+              requests: { cpu: 100m, memory: 256Mi }
+              limits: { memory: 768Mi }
+          schemaMigrator:
+            enabled: true
+          # short retention: 7 days logs/traces, 15 metrics — adjust later in the UI
+          # (Settings → General → Retention) or via API.
+    # Tailnet-only OTLP/HTTP Ingress (extra resource, in this repo)
+    - repoURL: https://github.com/YOUR_USER/one-vps-platform.git
+      targetRevision: main
+      path: k8s/apps/signoz
+  destination: { server: https://kubernetes.default.svc, namespace: signoz }
+  syncPolicy:
+    automated: { prune: false, selfHeal: true } # prune=false: never delete the ClickHouse PVC by mistake
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers: [/spec/volumeClaimTemplates]

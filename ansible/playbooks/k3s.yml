@@ -1,0 +1,82 @@
+---
+# Phase 4 — k3s single-node (ADR 0002)
+- name: k3s
+  hosts: lab
+  become: true
+
+  tasks:
+    - name: Install k3s {{ k3s_version | default('stable', true) }}
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl -sfL https://get.k3s.io | \
+          {{ ('INSTALL_K3S_VERSION=' ~ k3s_version) if k3s_version else 'INSTALL_K3S_CHANNEL=stable' }} \
+          INSTALL_K3S_EXEC="server {{ k3s_disable | map('regex_replace', '^', '--disable ') | join(' ') }} {{ k3s_extra_args }}" \
+          sh -
+      args: { creates: /usr/local/bin/k3s, executable: /bin/bash }
+
+    - name: Wait for the node to become Ready
+      ansible.builtin.command: k3s kubectl wait --for=condition=Ready node/{{ hostname }} --timeout=180s
+      changed_when: false
+      retries: 5
+      delay: 10
+      register: ready
+      until: ready.rc == 0
+
+    - name: kubeconfig for users with kube_access
+      block:
+        - ansible.builtin.file:
+            path: "/home/{{ item.name }}/.kube"
+            state: directory
+            owner: "{{ item.name }}"
+            group: "{{ item.name }}"
+            mode: "0700"
+          loop: "{{ work_users | selectattr('kube_access') | list }}"
+          loop_control: { label: "{{ item.name }}" }
+        - ansible.builtin.copy:
+            remote_src: true
+            src: /etc/rancher/k3s/k3s.yaml
+            dest: "/home/{{ item.name }}/.kube/config"
+            owner: "{{ item.name }}"
+            group: "{{ item.name }}"
+            mode: "0600"
+          loop: "{{ work_users | selectattr('kube_access') | list }}"
+          loop_control: { label: "{{ item.name }}" }
+        # Swap 127.0.0.1 for the Tailscale IP so it also works from the laptop
+        - ansible.builtin.command: tailscale ip -4
+          register: tsip
+          changed_when: false
+        - ansible.builtin.replace:
+            path: "/home/{{ item.name }}/.kube/config"
+            regexp: "https://127.0.0.1:6443"
+            replace: "https://{{ tsip.stdout }}:6443"
+          loop: "{{ work_users | selectattr('kube_access') | list }}"
+          loop_control: { label: "{{ item.name }}" }
+
+    - name: Allow API server only via the tailnet
+      community.general.ufw:
+        rule: allow
+        port: "6443"
+        proto: tcp
+        interface: tailscale0
+        direction: in
+
+    - name: Base namespaces
+      kubernetes.core.k8s:
+        kubeconfig: /etc/rancher/k3s/k3s.yaml
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata: { name: "{{ item }}" }
+      loop: [argocd, ingress-nginx, cert-manager, signoz, client-app]
+
+    - name: Cloudflare Secret for cert-manager (DNS-01)
+      kubernetes.core.k8s:
+        kubeconfig: /etc/rancher/k3s/k3s.yaml
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata: { name: cloudflare-api-token, namespace: cert-manager }
+          stringData: { api-token: "{{ cloudflare_api_token }}" }
+      no_log: true

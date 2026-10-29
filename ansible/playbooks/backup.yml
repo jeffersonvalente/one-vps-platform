@@ -1,0 +1,73 @@
+---
+# Phase 6 — restic → OCI Object Storage (S3-compat), via systemd timer.
+- name: restic backup
+  hosts: lab
+  become: true
+
+  tasks:
+    - name: restic env (root only)
+      ansible.builtin.copy:
+        dest: /etc/restic.env
+        mode: "0600"
+        content: |
+          RESTIC_REPOSITORY={{ restic_repository }}
+          RESTIC_PASSWORD={{ restic_password }}
+          AWS_ACCESS_KEY_ID={{ aws_access_key_id }}
+          AWS_SECRET_ACCESS_KEY={{ aws_secret_access_key }}
+      no_log: true
+
+    - name: Initialize repository (if not yet)
+      ansible.builtin.shell: |
+        set -a; . /etc/restic.env; set +a
+        restic snapshots >/dev/null 2>&1 || restic init
+      changed_when: false
+      no_log: true
+
+    - name: Backup script
+      ansible.builtin.copy:
+        dest: /usr/local/sbin/restic-backup
+        mode: "0750"
+        content: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          set -a; . /etc/restic.env; set +a
+          restic backup {{ restic_paths | join(' ') }} \
+            --exclude-caches --exclude '**/node_modules' --exclude '**/.cache' \
+            --tag auto
+          restic forget {{ restic_keep }} --prune
+          restic check --read-data-subset=5%
+
+    - name: systemd service + timer
+      block:
+        - ansible.builtin.copy:
+            dest: /etc/systemd/system/restic-backup.service
+            mode: "0644"
+            content: |
+              [Unit]
+              Description=restic backup → OCI
+              [Service]
+              Type=oneshot
+              ExecStart=/usr/local/sbin/restic-backup
+              Nice=10
+              IOSchedulingClass=idle
+        - ansible.builtin.copy:
+            dest: /etc/systemd/system/restic-backup.timer
+            mode: "0644"
+            content: |
+              [Unit]
+              Description=restic daily backup
+              [Timer]
+              OnCalendar={{ restic_schedule }}
+              Persistent=true
+              RandomizedDelaySec=15m
+              [Install]
+              WantedBy=timers.target
+        - ansible.builtin.systemd:
+            name: restic-backup.timer
+            enabled: true
+            state: started
+            daemon_reload: true
+
+    - name: Run the first backup now (slow the first time)
+      ansible.builtin.systemd: { name: restic-backup.service, state: started }
+      when: run_first_backup | default(false) | bool

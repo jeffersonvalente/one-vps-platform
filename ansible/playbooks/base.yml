@@ -1,0 +1,134 @@
+---
+# Phase 1 — hardening, swap, ufw, ops user.
+# First run as root (hPanel key). Afterwards, as ops.
+- name: Server base
+  hosts: lab
+  become: true
+
+  tasks:
+    - name: Hostname and timezone
+      block:
+        - ansible.builtin.hostname:
+            name: "{{ hostname }}"
+        - community.general.timezone:
+            name: "{{ timezone }}"
+        - ansible.builtin.lineinfile:
+            path: /etc/hosts
+            line: "127.0.1.1 {{ hostname }}.{{ domain }} {{ hostname }}"
+
+    - name: Base packages
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          - ufw
+          - fail2ban
+          - unattended-upgrades
+          - tmux
+          - git
+          - curl
+          - jq
+          - htop
+          - ncdu
+          - restic
+          - age
+          - python3-kubernetes # kubernetes.core
+        state: present
+
+    - name: Unattended upgrades (security only)
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        mode: "0644"
+        content: |
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+          APT::Periodic::AutocleanInterval "7";
+
+    - name: Swap {{ swap_size_gb }}G
+      block:
+        - ansible.builtin.command: fallocate -l {{ swap_size_gb }}G /swapfile
+          args: { creates: /swapfile }
+        - ansible.builtin.file: { path: /swapfile, mode: "0600" }
+        - ansible.builtin.command: mkswap /swapfile
+          register: mkswap
+          changed_when: "'Setting up swapspace' in mkswap.stdout"
+          failed_when: mkswap.rc != 0 and 'swapspace' not in mkswap.stderr
+        - ansible.posix.mount:
+            src: /swapfile
+            path: none
+            fstype: swap
+            opts: sw
+            state: present
+        - ansible.builtin.command: swapon -a
+          changed_when: false
+        - ansible.posix.sysctl: { name: vm.swappiness, value: "10", state: present }
+
+    - name: Sysctl for k3s/containers
+      ansible.posix.sysctl:
+        name: "{{ item.k }}"
+        value: "{{ item.v }}"
+        state: present
+      loop:
+        - { k: fs.inotify.max_user_watches, v: "524288" }
+        - { k: fs.inotify.max_user_instances, v: "1024" }
+        - { k: net.ipv4.ip_forward, v: "1" }
+        - { k: net.ipv6.conf.all.forwarding, v: "1" }
+
+    - name: Admin user {{ ops_user }}
+      block:
+        - ansible.builtin.user:
+            name: "{{ ops_user }}"
+            shell: /bin/bash
+            groups: sudo
+            append: true
+        - ansible.posix.authorized_key:
+            user: "{{ ops_user }}"
+            key: "{{ ops_ssh_pubkey }}"
+        - ansible.builtin.copy:
+            dest: /etc/sudoers.d/90-{{ ops_user }}
+            content: "{{ ops_user }} ALL=(ALL) NOPASSWD:ALL\n"
+            mode: "0440"
+            validate: visudo -cf %s
+
+    - name: sshd — key only, no root
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/99-hardening.conf
+        mode: "0644"
+        content: |
+          PermitRootLogin no
+          PasswordAuthentication no
+          KbdInteractiveAuthentication no
+          PubkeyAuthentication yes
+          X11Forwarding no
+          AllowTcpForwarding yes
+          ClientAliveInterval 300
+          ClientAliveCountMax 2
+          AllowUsers {{ ops_user }} {{ work_users | map(attribute='name') | join(' ') }}
+        validate: sshd -t -f %s
+      notify: restart sshd
+
+    - name: ufw — default deny; 22 only until Tailscale is up
+      block:
+        - community.general.ufw: { direction: incoming, default: deny }
+        - community.general.ufw: { direction: outgoing, default: allow }
+        - community.general.ufw: { rule: allow, port: "22", proto: tcp, comment: "temp until tailscale" }
+        - community.general.ufw: { rule: allow, port: "41641", proto: udp, comment: "tailscale direct (optional)" }
+        # every service (ssh, k8s api, ingress 80/443) only via the tailnet interface
+        - community.general.ufw: { rule: allow, interface: tailscale0, direction: in, comment: "intranet" }
+        - community.general.ufw: { state: enabled }
+
+    - name: fail2ban sshd
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.d/sshd.local
+        mode: "0644"
+        content: |
+          [sshd]
+          enabled = true
+          maxretry = 4
+          bantime = 1h
+      notify: restart fail2ban
+
+  handlers:
+    - name: restart sshd
+      ansible.builtin.service: { name: ssh, state: restarted }
+    - name: restart fail2ban
+      ansible.builtin.service: { name: fail2ban, state: restarted }

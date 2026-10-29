@@ -1,0 +1,9 @@
+---
+# cp vault.sops.yml.example vault.sops.yml && sops vault.sops.yml   (encrypts on save)
+# Read automatically by the community.sops vars plugin.
+tailscale_authkey: "tskey-auth-REPLACE"        # terraform -chdir=terraform/tailscale output -raw server_authkey
+restic_repository: "s3:https://NAMESPACE.compat.objectstorage.sa-saopaulo-1.oraclecloud.com/onevps-backup"
+restic_password: "REPLACE-long-random"
+aws_access_key_id: "REPLACE"                   # OCI customer secret key (S3-compat)
+aws_secret_access_key: "REPLACE"
+cloudflare_api_token: "REPLACE"                # cert-manager DNS-01 (goes into the Secret in the cluster)

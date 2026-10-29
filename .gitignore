@@ -1,0 +1,25 @@
+# terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/terraform.tfvars
+**/crash.log
+
+# ansible
+ansible/inventory/hosts.yml
+ansible/*.retry
+ansible/.vault_pass
+
+# plaintext secrets (only *.sops.yml / *.enc.* go into the repo)
+*.pem
+*.key
+id_*
+!*.sops.yml
+kubeconfig*
+!kubeconfig.sops.yml
+.env
+.env.*
+
+# system
+.DS_Store
+*.swp

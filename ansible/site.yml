@@ -1,0 +1,8 @@
+---
+# Full order (rebuild). Each playbook also runs on its own.
+- import_playbook: playbooks/base.yml
+- import_playbook: playbooks/tailscale.yml
+- import_playbook: playbooks/users.yml
+- import_playbook: playbooks/k3s.yml
+- import_playbook: playbooks/docker-rootless.yml
+- import_playbook: playbooks/backup.yml

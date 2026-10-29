@@ -1,0 +1,148 @@
+---
+# Phase 3 — one Linux user per company (ADR 0003). No sudo.
+# Afterwards, logged in as each one: gh auth login · ssh-keygen -t ed25519 · claude (login)
+- name: Work users
+  hosts: lab
+  become: true
+
+  tasks:
+    - name: k3s group (kubeconfig read access)
+      ansible.builtin.group: { name: k3s, system: true }
+
+    - name: Create users
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        comment: "{{ item.comment }}"
+        shell: /bin/bash
+        create_home: true
+        home: "/home/{{ item.name }}"
+        groups: "{{ ['k3s'] if item.kube_access else [] }}"
+        append: true
+      loop: "{{ work_users }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: Home 0700 — one user cannot see another
+      ansible.builtin.file:
+        path: "/home/{{ item.name }}"
+        mode: "0700"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+      loop: "{{ work_users }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: Same ops public key on all (access via Tailscale SSH also works)
+      ansible.posix.authorized_key:
+        user: "{{ item.name }}"
+        key: "{{ ops_ssh_pubkey }}"
+      loop: "{{ work_users }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: Linger — systemd --user services start at boot and survive logout
+      ansible.builtin.command: loginctl enable-linger {{ item.name }}
+      args: { creates: "/var/lib/systemd/linger/{{ item.name }}" }
+      loop: "{{ work_users }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: .gitconfig per company
+      ansible.builtin.copy:
+        dest: "/home/{{ item.name }}/.gitconfig"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "0644"
+        content: |
+          [user]
+            name = {{ item.git_name }}
+            email = {{ item.git_email }}
+          [init]
+            defaultBranch = main
+          [pull]
+            rebase = true
+          [credential]
+            helper = !gh auth git-credential
+          # GitHub account for this workspace: {{ item.github_user }}  (gh auth login)
+      loop: "{{ work_users }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: Alias cc = tmux new -As claude (Claude Code survives SSH drops)
+      ansible.builtin.blockinfile:
+        path: "/home/{{ item.name }}/.bashrc"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        create: true
+        mode: "0644"
+        marker: "# {mark} one-vps-platform"
+        block: |
+          alias cc='tmux new -As claude'
+          alias ta='tmux attach || tmux new -As main'
+      loop: "{{ work_users }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: Minimal .tmux.conf
+      ansible.builtin.copy:
+        dest: "/home/{{ item.name }}/.tmux.conf"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: "0644"
+        content: |
+          # Ctrl-a prefix (Ctrl-b is stolen by VS Code/Windows Terminal in some setups)
+          unbind C-b
+          set -g prefix C-a
+          bind C-a send-prefix
+          set -g mouse on                      # mouse wheel scrolls history
+          set -g history-limit 100000
+          set -g default-terminal "tmux-256color"
+          set -g escape-time 10
+          set -g status-left "[{{ item.name }}] "
+          # PgUp enters copy mode directly; q exits
+          bind -n PPage copy-mode -u
+      loop: "{{ work_users }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: GitHub CLI (official repo)
+      block:
+        - ansible.builtin.deb822_repository:
+            name: github-cli
+            types: [deb]
+            uris: https://cli.github.com/packages
+            suites: [stable]
+            components: [main]
+            architectures: [amd64]
+            signed_by: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+        - ansible.builtin.apt: { name: gh, update_cache: true }
+
+    - name: Node.js 22 (for Claude Code via npm, per user)
+      block:
+        - ansible.builtin.deb822_repository:
+            name: nodesource
+            types: [deb]
+            uris: https://deb.nodesource.com/node_22.x
+            suites: [nodistro]
+            components: [main]
+            signed_by: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+        - ansible.builtin.apt: { name: nodejs, update_cache: true }
+
+    - name: Claude Code installed IN each user's HOME (npm prefix ~/.npm-global)
+      become: true
+      become_user: "{{ item.name }}"
+      ansible.builtin.shell: |
+        set -e
+        mkdir -p ~/.npm-global
+        npm config set prefix ~/.npm-global
+        for rc in ~/.profile ~/.bashrc; do grep -q npm-global "$rc" 2>/dev/null || echo 'export PATH=$HOME/.npm-global/bin:$PATH' >> "$rc"; done
+        npm install -g @anthropic-ai/claude-code
+      args: { creates: "/home/{{ item.name }}/.npm-global/bin/claude" }
+      loop: "{{ work_users }}"
+      loop_control: { label: "{{ item.name }}" }
+
+    - name: kubectl + helm (system-wide; kubeconfig only for those with kube_access)
+      block:
+        - name: kubectl (symlink to the one bundled in k3s; installed in the k3s phase)
+          ansible.builtin.file:
+            src: /usr/local/bin/k3s
+            dest: /usr/local/bin/kubectl
+            state: link
+            force: true
+          ignore_errors: true # before k3s exists this only warns
+        - name: helm (official script)
+          ansible.builtin.shell: set -o pipefail && curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          args: { creates: /usr/local/bin/helm, executable: /bin/bash }

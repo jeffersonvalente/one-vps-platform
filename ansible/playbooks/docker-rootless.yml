@@ -1,0 +1,98 @@
+---
+# Rootless Docker ONLY for users listed in docker_rootless_users (default: client-a).
+# No root daemon; does not conflict with k3s containerd. Ports <1024 not available (dev does not need them).
+# Usage: ansible-playbook playbooks/docker-rootless.yml
+- name: Rootless Docker per user
+  hosts: lab
+  become: true
+  vars:
+    docker_rootless_users: "{{ work_users | selectattr('docker_rootless', 'defined') | selectattr('docker_rootless') | map(attribute='name') | list }}"
+
+  tasks:
+    - name: Prerequisites (system packages)
+      ansible.builtin.apt:
+        name: [uidmap, dbus-user-session, slirp4netns, fuse-overlayfs, iptables]
+        state: present
+        update_cache: true
+
+    - name: Docker repository (deb822)
+      ansible.builtin.deb822_repository:
+        name: docker
+        types: [deb]
+        uris: https://download.docker.com/linux/ubuntu
+        suites: ["{{ ansible_facts['distribution_release'] }}"]
+        components: [stable]
+        architectures: [amd64]
+        signed_by: https://download.docker.com/linux/ubuntu/gpg
+
+    - name: Docker binaries (system daemon stays DISABLED)
+      ansible.builtin.apt:
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin, docker-ce-rootless-extras]
+        state: present
+        update_cache: true
+
+    - name: Disable root daemon (rootless only)
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: false
+        state: stopped
+        masked: true
+      loop: [docker.service, docker.socket, containerd.service]
+      failed_when: false
+
+    - name: subuid/subgid for the users
+      ansible.builtin.lineinfile:
+        path: "{{ item.1 }}"
+        regexp: "^{{ item.0 }}:"
+        line: "{{ item.0 }}:{{ 100000 + (loop_index | default(0)) * 65536 }}:65536"
+      loop: "{{ docker_rootless_users | product(['/etc/subuid', '/etc/subgid']) | list }}"
+      loop_control: { index_var: loop_index, label: "{{ item.0 }} {{ item.1 }}" }
+
+    - name: Allow ping/low ports in rootless (optional, handy for demos)
+      ansible.posix.sysctl:
+        name: "{{ item.k }}"
+        value: "{{ item.v }}"
+        state: present
+      loop:
+        - { k: net.ipv4.ping_group_range, v: "0 2147483647" }
+        - { k: net.ipv4.ip_unprivileged_port_start, v: "80" }
+
+    - name: Linger (already done in users.yml; idempotent)
+      ansible.builtin.command: loginctl enable-linger {{ item }}
+      args: { creates: "/var/lib/systemd/linger/{{ item }}" }
+      loop: "{{ docker_rootless_users }}"
+
+    - name: Rootless setup as the user itself
+      become: true
+      become_user: "{{ item }}"
+      ansible.builtin.shell: |
+        set -eo pipefail
+        export XDG_RUNTIME_DIR=/run/user/$(id -u)
+        export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
+        dockerd-rootless-setuptool.sh install --skip-iptables 2>&1 | tail -3
+        systemctl --user enable --now docker
+        for rc in ~/.profile ~/.bashrc; do
+          grep -q DOCKER_HOST "$rc" 2>/dev/null || printf '%s\n' \
+            'export XDG_RUNTIME_DIR=/run/user/$(id -u)' \
+            'export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/docker.sock' >> "$rc"
+        done
+      args:
+        creates: "/home/{{ item }}/.config/systemd/user/docker.service"
+        executable: /bin/bash
+      loop: "{{ docker_rootless_users }}"
+
+    - name: Verify
+      become: true
+      become_user: "{{ item }}"
+      ansible.builtin.shell: |
+        export XDG_RUNTIME_DIR=/run/user/$(id -u) DOCKER_HOST=unix:///run/user/$(id -u)/docker.sock
+        docker info --format '{{ "{{" }}.SecurityOptions{{ "}}" }} {{ "{{" }}.ServerVersion{{ "}}" }}' && docker compose version
+      args: { executable: /bin/bash }
+      changed_when: false
+      register: dinfo
+      loop: "{{ docker_rootless_users }}"
+
+    - ansible.builtin.debug:
+        msg: "{{ item.item }}: {{ item.stdout_lines }}"
+      loop: "{{ dinfo.results }}"
+      loop_control: { label: "{{ item.item }}" }

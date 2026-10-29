@@ -1,0 +1,51 @@
+---
+# ---------- machine ----------
+hostname: vps
+domain: example.com
+timezone: America/Sao_Paulo
+swap_size_gb: 4
+
+# ---------- admin ----------
+ops_user: ops
+ops_ssh_pubkey: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
+
+# ---------- work users (ADR 0003) ----------
+# None has sudo. Only 'personal' gets a kubeconfig.
+work_users:
+  - name: personal
+    comment: "Your Name — lab / personal projects"
+    git_name: "Your Name"
+    git_email: "you@example.com"
+    github_user: YOUR_USER
+    kube_access: true
+  - name: client-a
+    comment: "Workspace client A"
+    git_name: "Your Name"
+    git_email: "you@client-a.example"
+    github_user: your-client-a-gh-user
+    kube_access: false
+    docker_rootless: true # dev stack for the client app (OTel Demo via compose)
+  - name: client-b
+    comment: "Workspace client B"
+    git_name: "Your Name"
+    git_email: "you@client-b.example"
+    github_user: your-client-b-gh-user
+    kube_access: false
+
+# ---------- k3s ----------
+k3s_version: "" # empty = stable channel (INSTALL_K3S_CHANNEL); set e.g. "v1.34.1+k3s1" to pin
+k3s_disable: [traefik, servicelb]
+k3s_extra_args: >-
+  --write-kubeconfig-mode 640
+  --write-kubeconfig-group k3s
+  --kube-apiserver-arg=event-ttl=24h
+  --kubelet-arg=eviction-hard=memory.available<500Mi
+  --kubelet-arg=system-reserved=cpu=200m,memory=512Mi
+
+# ---------- backup ----------
+restic_paths:
+  - /home
+  - /var/lib/rancher/k3s/storage
+  - /etc/rancher
+restic_keep: "--keep-daily 7 --keep-weekly 4 --keep-monthly 3"
+restic_schedule: "*-*-* 03:30:00" # systemd OnCalendar (BRT via timezone above)

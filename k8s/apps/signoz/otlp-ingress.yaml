@@ -1,0 +1,27 @@
+---
+# OTLP/HTTP from outside the cluster (processes in the users' homes), tailnet only.
+# Endpoint: https://otlp.lab.example.com/v1/{traces,metrics,logs}
+# Opens no new port: goes through ingress-nginx (80/443 only via tailscale0).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: signoz-otlp
+  namespace: signoz
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/proxy-body-size: 16m
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [otlp.lab.example.com]
+      secretName: signoz-otlp-tls
+  rules:
+    - host: otlp.lab.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: signoz-otel-collector
+                port: { number: 4318 }
