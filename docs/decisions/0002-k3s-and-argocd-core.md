@@ -1,11 +1,11 @@
-# ADR 0002 — k3s single-node + ArgoCD core
+# ADR 0002, k3s single-node + ArgoCD core
 
 **Status:** accepted
 
 ## Decision
 - **k3s** (CNCF-conformant Kubernetes distribution) with `--disable traefik,servicelb`. ingress-nginx and
   cert-manager are installed via Helm/ArgoCD so the charts stay portable to any managed Kubernetes.
-  Storage: `local-path` — one node, NVMe; a distributed storage layer would be waste.
+  Storage: `local-path`, one node, NVMe; a distributed storage layer would be waste.
 - **ArgoCD core** (no UI/Dex/notifications, ~300 MB) rather than the full install (~1 GB) or Flux.
   It is the GitOps model I already operate daily; the UI is available on demand via
   `argocd admin dashboard`.

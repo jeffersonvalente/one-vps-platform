@@ -1,13 +1,13 @@
-# ADR 0004 — Incident: SigNoz stopped ingesting (ZooKeeper OOMKilled)
+# ADR 0004, Incident: SigNoz stopped ingesting (ZooKeeper OOMKilled)
 
 **Window:** ~35 min without ingestion · **Severity:** lab, no meaningful loss · **Status:** resolved
 
 ## What happened
 A tenant started a load test: an OpenTelemetry demo shop with 14 services, ~9k active metric series.
-Twenty-seven minutes later `signoz-zookeeper-0` entered CrashLoopBackOff — **OOMKilled** at a 384 MiB
+Twenty-seven minutes later `signoz-zookeeper-0` entered CrashLoopBackOff: **OOMKilled** at a 384 MiB
 limit, 16 restarts. Without ZooKeeper, ClickHouse rejects INSERTs; the otel-collector logged
 `Exporting failed. Rejecting data.` Yet the OTLP endpoint kept answering **200**, because the collector
-is what answers — not the storage. The tenant's first (reasonable) guess was "too much volume".
+is what answers, not the storage. The tenant's first (reasonable) guess was "too much volume".
 
 ## Why
 Every limit in `signoz.yaml` had been sized for an *idle* lab (ZK 384 Mi, ClickHouse 2 Gi). A 14-service

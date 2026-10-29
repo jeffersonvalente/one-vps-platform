@@ -1,5 +1,5 @@
 ---
-# Phase 3 — one Linux user per company (ADR 0003). No sudo.
+# Phase 3, one Linux user per company (ADR 0003). No sudo.
 # Afterwards, logged in as each one: gh auth login · ssh-keygen -t ed25519 · claude (login)
 - name: Work users
   hosts: lab
@@ -21,7 +21,7 @@
       loop: "{{ work_users }}"
       loop_control: { label: "{{ item.name }}" }
 
-    - name: Home 0700 — one user cannot see another
+    - name: Home 0700, one user cannot see another
       ansible.builtin.file:
         path: "/home/{{ item.name }}"
         mode: "0700"
@@ -37,7 +37,7 @@
       loop: "{{ work_users }}"
       loop_control: { label: "{{ item.name }}" }
 
-    - name: Linger — systemd --user services start at boot and survive logout
+    - name: Linger, systemd --user services start at boot and survive logout
       ansible.builtin.command: loginctl enable-linger {{ item.name }}
       args: { creates: "/var/lib/systemd/linger/{{ item.name }}" }
       loop: "{{ work_users }}"

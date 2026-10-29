@@ -1,4 +1,4 @@
-// Tailscale ACL — onevps
+// Tailscale ACL, onevps
 // General rule: my devices (tag:client) reach everything on the server;
 // the server initiates connections to nobody.
 {

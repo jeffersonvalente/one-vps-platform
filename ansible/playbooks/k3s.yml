@@ -1,5 +1,5 @@
 ---
-# Phase 4 — k3s single-node (ADR 0002)
+# Phase 4, k3s single-node (ADR 0002)
 - name: k3s
   hosts: lab
   become: true

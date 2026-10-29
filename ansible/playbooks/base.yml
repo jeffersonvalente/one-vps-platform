@@ -1,5 +1,5 @@
 ---
-# Phase 1 — hardening, swap, ufw, ops user.
+# Phase 1, hardening, swap, ufw, ops user.
 # First run as root (hPanel key). Afterwards, as ops.
 - name: Server base
   hosts: lab
@@ -89,7 +89,7 @@
             mode: "0440"
             validate: visudo -cf %s
 
-    - name: sshd — key only, no root
+    - name: sshd, key only, no root
       ansible.builtin.copy:
         dest: /etc/ssh/sshd_config.d/99-hardening.conf
         mode: "0644"
@@ -106,7 +106,7 @@
         validate: sshd -t -f %s
       notify: restart sshd
 
-    - name: ufw — default deny; 22 only until Tailscale is up
+    - name: ufw, default deny; 22 only until Tailscale is up
       block:
         - community.general.ufw: { direction: incoming, default: deny }
         - community.general.ufw: { direction: outgoing, default: allow }

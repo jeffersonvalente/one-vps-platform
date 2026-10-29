@@ -1,5 +1,5 @@
 ---
-# Phase 6 — restic → OCI Object Storage (S3-compat), via systemd timer.
+# Phase 6, restic → OCI Object Storage (S3-compat), via systemd timer.
 - name: restic backup
   hosts: lab
   become: true

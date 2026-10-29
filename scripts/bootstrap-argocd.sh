@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 4b — installs ArgoCD core and the root app. Runs on the VPS as personal (has kubeconfig)
+# Phase 4b, installs ArgoCD core and the root app. Runs on the VPS as personal (has kubeconfig)
 # or from any machine on the tailnet with the kubeconfig pointing to the 100.x.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -23,7 +23,7 @@ if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     --dry-run=client -o yaml | kubectl apply -f -
   kubectl -n argocd label secret repo-one-vps-platform argocd.argoproj.io/secret-type=repository --overwrite
 else
-  echo "⚠️  GITHUB_TOKEN not set — the root app will not be able to read the private repo."
+  echo "⚠️  GITHUB_TOKEN not set, the root app will not be able to read the private repo."
 fi
 
 kubectl apply -f k8s/bootstrap/argocd/project-default.yaml

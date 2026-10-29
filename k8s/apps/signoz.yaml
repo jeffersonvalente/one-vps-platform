@@ -72,7 +72,7 @@ spec:
               limits: { memory: 768Mi }
           schemaMigrator:
             enabled: true
-          # short retention: 7 days logs/traces, 15 metrics — adjust later in the UI
+          # short retention: 7 days logs/traces, 15 metrics, adjust later in the UI
           # (Settings → General → Retention) or via API.
     # Tailnet-only OTLP/HTTP Ingress (extra resource, in this repo)
     - repoURL: https://github.com/YOUR_USER/one-vps-platform.git

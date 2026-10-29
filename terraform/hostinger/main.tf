@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# Existing VPS — IMPORT, never create:
+# Existing VPS, IMPORT, never create:
 #   terraform import hostinger_vps.lab <VPS_ID>
 #
 # WARNING: in the Hostinger provider, `terraform destroy` on this resource
@@ -32,6 +32,6 @@ resource "hostinger_vps" "lab" {
 # Firewall: the provider does not expose firewall rules yet (check releases).
 # Until then, rules are documented here and applied via hPanel or the API CLI (hapi):
 #   - phase 0:  22/tcp  from 0.0.0.0/0  (temporary, bootstrap only)
-#   - phase 2+: 22/tcp  REMOVE. Only 41641/udp remains (optional — direct
+#   - phase 2+: 22/tcp  REMOVE. Only 41641/udp remains (optional, direct
 #              Tailscale connection instead of DERP relay). NOTHING else.
 #              Internet sees: no TCP port. Intranet via tailnet.

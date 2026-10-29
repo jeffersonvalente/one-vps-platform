@@ -9,6 +9,6 @@ terraform {
 }
 
 provider "oci" {
-  # Uses ~/.oci/config (profile DEFAULT) — same config as oci-cli.
+  # Uses ~/.oci/config (profile DEFAULT), same config as oci-cli.
   region = var.region
 }

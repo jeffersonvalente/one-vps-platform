@@ -1,12 +1,12 @@
 ---
-# Phase 2 — Tailscale with SSH. After this: switch ansible_host to the 100.x,
+# Phase 2, Tailscale with SSH. After this: switch ansible_host to the 100.x,
 # ansible_user to ops, and close 22 in the Hostinger firewall and in ufw.
 - name: Tailscale
   hosts: lab
   become: true
 
   tasks:
-    - name: Install tailscale (official script picks the right repo for the release — 26.04 included)
+    - name: Install tailscale (official script picks the right repo for the release, 26.04 included)
       ansible.builtin.shell: set -o pipefail && curl -fsSL https://tailscale.com/install.sh | sh
       args: { creates: /usr/bin/tailscale, executable: /bin/bash }
 
@@ -39,7 +39,7 @@
     - name: Show
       ansible.builtin.debug:
         msg: >-
-          Tailscale IP: {{ tsip.stdout }} —
+          Tailscale IP: {{ tsip.stdout }} -
           1) change ansible_host in the inventory;
           2) remove 22/tcp from the Hostinger firewall;
           3) run: ansible-playbook playbooks/tailscale.yml -e close_public_ssh=true

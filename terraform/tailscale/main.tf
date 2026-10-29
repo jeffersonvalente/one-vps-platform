@@ -11,7 +11,7 @@ resource "tailscale_tailnet_key" "server" {
   reusable      = true
   ephemeral     = false
   preauthorized = true
-  expiry        = 7776000 # 90 days — renew
+  expiry        = 7776000 # 90 days, renew
   tags          = ["tag:server"]
   description   = "ansible tailscale lab vps"
 }

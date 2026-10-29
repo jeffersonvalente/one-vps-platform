@@ -1,4 +1,4 @@
-# ADR 0003 — One Linux user per tenant
+# ADR 0003, One Linux user per tenant
 
 **Status:** accepted
 

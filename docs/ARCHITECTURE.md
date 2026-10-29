@@ -50,7 +50,7 @@ Detailed decisions live in [`docs/decisions/`](docs/decisions/) as short ADRs.
 ## Repository layout
 
 ```
-terraform/      hostinger (import only — destroy cancels the subscription!) · cloudflare · tailscale · oci
+terraform/      hostinger (import only, destroy cancels the subscription!) · cloudflare · tailscale · oci
 ansible/        base · tailscale · users · k3s · docker-rootless · backup   (site.yml runs all)
 k8s/            bootstrap/argocd (core + app-of-apps) · apps/ (ingress-nginx, cert-manager, signoz)
 scripts/        bootstrap-argocd.sh · rebuild.sh
@@ -60,11 +60,11 @@ docs/           decisions/ (ADRs + postmortem) · inventory template · ssh_conf
 ## Runbook (abridged)
 
 1. **Provider**: fresh Ubuntu LTS, SSH key, firewall `22/tcp` only (temporary), snapshot.
-2. `terraform/` — import the VPS (`terraform import hostinger_vps.lab <ID>`), apply DNS, Tailscale ACL, bucket.
+2. `terraform/`, import the VPS (`terraform import hostinger_vps.lab <ID>`), apply DNS, Tailscale ACL, bucket.
 3. `ansible-playbook playbooks/base.yml playbooks/tailscale.yml` → note the 100.x IP → switch inventory
    to it → **close 22/tcp at the provider** → `tailscale.yml -e close_public_ssh=true`.
 4. `users.yml` · `k3s.yml` · `docker-rootless.yml` · `backup.yml`.
-5. `scripts/bootstrap-argocd.sh` — apps sync from Git.
+5. `scripts/bootstrap-argocd.sh`, apps sync from Git.
 6. Open SigNoz, **create the admin account first** (without an org the collector never opens its
    receivers), then invite tenants / create service accounts.
 

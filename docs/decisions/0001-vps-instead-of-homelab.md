@@ -1,4 +1,4 @@
-# ADR 0001 — A rented VPS instead of a home server
+# ADR 0001, A rented VPS instead of a home server
 
 **Status:** accepted
 
@@ -13,7 +13,7 @@ footprint, and a browser/game competing for the rest. I also wanted access from 
 3. Cheaper-per-GB providers abroad (more RAM, +150–220 ms latency, no local datacenter).
 
 ## Decision
-Option 2. 16 GB on a headless Linux box covers the current lab comfortably — there is no Windows,
+Option 2. 16 GB on a headless Linux box covers the current lab comfortably, there is no Windows,
 browser or game sharing it. In-region latency, no hardware to babysit, upgrade path if needed.
 
 ## Consequences
