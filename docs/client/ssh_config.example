@@ -1,22 +1,22 @@
 # ~/.ssh/config on the PC (Windows: C:\Users\<user>\.ssh\config). One host per user/company.
-# Access only via the tailnet; lab.example.com resolves to the Tailscale IP.
+# Access only via the tailnet; lab.YOUR_DOMAIN resolves to the Tailscale IP.
 
 Host vps-client-a
-  HostName lab.example.com
+  HostName lab.YOUR_DOMAIN
   User client-a
   IdentityFile ~/.ssh/id_ed25519
 
 Host vps-personal
-  HostName lab.example.com
+  HostName lab.YOUR_DOMAIN
   User personal
   IdentityFile ~/.ssh/id_ed25519
 
 Host vps-client-b
-  HostName lab.example.com
+  HostName lab.YOUR_DOMAIN
   User client-b
   IdentityFile ~/.ssh/id_ed25519
 
 Host vps-ops
-  HostName lab.example.com
+  HostName lab.YOUR_DOMAIN
   User ops
   IdentityFile ~/.ssh/id_ed25519

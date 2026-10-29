@@ -43,7 +43,7 @@ terraform/      hostinger (só import, destroy cancelaria o plano) · cloudflare
 ansible/        base → tailscale → users → k3s → docker-rootless → backup      (site.yml roda tudo)
 k8s/            bootstrap/argocd (core + app-of-apps) · apps/ (ingress-nginx, cert-manager, signoz)
 scripts/        bootstrap-argocd.sh · rebuild.sh
-docs/           ARCHITECTURE.md · decisions/ (ADRs + postmortem) · inventory.md · client/ssh_config.example
+docs/           CONFIGURE.md · ARCHITECTURE.md · decisions/ (ADRs + postmortem) · inventory.md · client/ssh_config.example
 ```
 
 Bootstrap em uma linha: o provedor entrega um Ubuntu zerado → `terraform apply` → `ansible-playbook site.yml` → Tailscale no ar → **fecha a porta 22 no provedor** → `scripts/bootstrap-argocd.sh` → apps sincronizam do Git. Runbook completo, orçamento de memória e manhas do SigNoz: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (em inglês).
@@ -59,7 +59,7 @@ ADRs curtos, um por escolha que alguém poderia questionar (em inglês):
 
 ## Use
 
-Clone, copie os arquivos `*.example`, preencha seus IDs, gere uma chave `age` pro SOPS e siga o runbook. Assume uma VPS KVM da Hostinger, DNS na Cloudflare e uma conta Tailscale, mas cada parte específica de provedor é um módulo Terraform fino que dá pra trocar.
+Clone e siga [docs/CONFIGURE.md](docs/CONFIGURE.md): copie os arquivos `*.example`, troque cada placeholder `YOUR_*` (`scripts/check-placeholders.sh` lista o que falta), gere uma chave `age` pro SOPS e rode o runbook. Assume uma VPS KVM da Hostinger, DNS na Cloudflare e uma conta Tailscale, mas cada parte específica de provedor é um módulo Terraform fino que dá pra trocar.
 
 ## Licença
 

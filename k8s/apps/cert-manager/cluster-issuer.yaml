@@ -8,14 +8,14 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: you@example.com
+    email: YOUR_EMAIL
     privateKeySecretRef: { name: letsencrypt-account }
     solvers:
       - dns01:
           cloudflare:
             apiTokenSecretRef: { name: cloudflare-api-token, key: api-token }
         selector:
-          dnsZones: [example.com]
+          dnsZones: [YOUR_DOMAIN.example]
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -24,7 +24,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: you@example.com
+    email: YOUR_EMAIL
     privateKeySecretRef: { name: letsencrypt-staging-account }
     solvers:
       - dns01:

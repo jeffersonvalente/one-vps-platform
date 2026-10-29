@@ -43,7 +43,7 @@ terraform/      hostinger (import only, destroy would cancel the plan) · cloudf
 ansible/        base → tailscale → users → k3s → docker-rootless → backup      (site.yml runs all)
 k8s/            bootstrap/argocd (core + app-of-apps) · apps/ (ingress-nginx, cert-manager, signoz)
 scripts/        bootstrap-argocd.sh · rebuild.sh
-docs/           ARCHITECTURE.md · decisions/ (ADRs + postmortem) · inventory.md · client/ssh_config.example
+docs/           CONFIGURE.md · ARCHITECTURE.md · decisions/ (ADRs + postmortem) · inventory.md · client/ssh_config.example
 ```
 
 Bootstrap in one line: provider gives a fresh Ubuntu → `terraform apply` → `ansible-playbook site.yml` → Tailscale up → **close port 22 at the provider** → `scripts/bootstrap-argocd.sh` → apps sync from Git. Full runbook, memory budget and SigNoz quirks: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -59,7 +59,7 @@ Short ADRs, one per choice that someone might question:
 
 ## Use it
 
-Clone, copy the `*.example` files, fill in your IDs, generate an `age` key for SOPS, and follow the runbook. It assumes a Hostinger KVM VPS, Cloudflare DNS and a Tailscale account, but every provider-specific piece is a thin Terraform module you can swap.
+Clone, then follow [docs/CONFIGURE.md](docs/CONFIGURE.md): copy the `*.example` files, replace every `YOUR_*` placeholder (`scripts/check-placeholders.sh` lists what is left), generate an `age` key for SOPS, and run the runbook. It assumes a Hostinger KVM VPS, Cloudflare DNS and a Tailscale account, but every provider-specific piece is a thin Terraform module you can swap.
 
 ## License
 

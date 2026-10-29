@@ -1,6 +1,6 @@
 ---
 # OTLP/HTTP from outside the cluster (processes in the users' homes), tailnet only.
-# Endpoint: https://otlp.lab.example.com/v1/{traces,metrics,logs}
+# Endpoint: https://otlp.lab.<your domain>/v1/{traces,metrics,logs}
 # Opens no new port: goes through ingress-nginx (80/443 only via tailscale0).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -13,10 +13,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [otlp.lab.example.com]
+    - hosts: [otlp.lab.YOUR_DOMAIN.example]
       secretName: signoz-otlp-tls
   rules:
-    - host: otlp.lab.example.com
+    - host: otlp.lab.YOUR_DOMAIN.example
       http:
         paths:
           - path: /

@@ -7,7 +7,7 @@ all:
   children:
     lab:
       hosts:
-        vps.lab.example.com:
-          ansible_host: 203.0.113.10
+        vps:
+          ansible_host: YOUR_VPS_PUBLIC_IP # switch to the Tailscale IP after playbooks/tailscale.yml
           ansible_user: root
           ansible_port: 22

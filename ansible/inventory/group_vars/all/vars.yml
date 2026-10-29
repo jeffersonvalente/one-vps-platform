@@ -1,7 +1,7 @@
 ---
 # ---------- machine ----------
 hostname: vps
-domain: example.com
+domain: YOUR_DOMAIN.example # e.g. example.com; hosts become <name>.lab.<domain>
 timezone: America/Sao_Paulo
 swap_size_gb: 4
 
@@ -15,21 +15,21 @@ work_users:
   - name: personal
     comment: "Your Name, lab / personal projects"
     git_name: "Your Name"
-    git_email: "you@example.com"
-    github_user: YOUR_USER
+    git_email: "YOUR_EMAIL"
+    github_user: YOUR_GITHUB_USER
     kube_access: true
   - name: client-a
     comment: "Workspace client A"
     git_name: "Your Name"
-    git_email: "you@client-a.example"
-    github_user: your-client-a-gh-user
+    git_email: "YOUR_CLIENT_A_EMAIL"
+    github_user: YOUR_CLIENT_A_GITHUB_USER
     kube_access: false
     docker_rootless: true # dev stack for the client app (OTel Demo via compose)
   - name: client-b
     comment: "Workspace client B"
     git_name: "Your Name"
-    git_email: "you@client-b.example"
-    github_user: your-client-b-gh-user
+    git_email: "YOUR_CLIENT_B_EMAIL"
+    github_user: YOUR_CLIENT_B_GITHUB_USER
     kube_access: false
 
 # ---------- k3s ----------

@@ -1,2 +1,3 @@
 vps_id         = YOUR_VPS_ID
+hostname       = "vps.lab.YOUR_DOMAIN.example"
 ssh_public_key = "ssh-ed25519 AAAA... ops@onevps"

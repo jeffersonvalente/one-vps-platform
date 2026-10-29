@@ -5,7 +5,7 @@ variable "vps_id" {
 
 variable "hostname" {
   type    = string
-  default = "vps.lab.example.com"
+  # no default on purpose: set it in terraform.tfvars (vps.lab.<your domain>)
 }
 
 variable "ssh_public_key" {

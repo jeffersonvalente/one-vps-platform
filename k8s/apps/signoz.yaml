@@ -60,11 +60,11 @@ spec:
               annotations:
                 cert-manager.io/cluster-issuer: letsencrypt
               hosts:
-                - host: signoz.lab.example.com # private (Tailscale IP)
+                - host: signoz.lab.YOUR_DOMAIN.example # private (resolves to the Tailscale IP)
                   paths: [{ path: /, pathType: Prefix, port: 8080 }]
               tls:
                 - secretName: signoz-tls
-                  hosts: [signoz.lab.example.com]
+                  hosts: [signoz.lab.YOUR_DOMAIN.example]
           otelCollector:
             replicaCount: 1
             resources:
@@ -75,7 +75,7 @@ spec:
           # short retention: 7 days logs/traces, 15 metrics, adjust later in the UI
           # (Settings → General → Retention) or via API.
     # Tailnet-only OTLP/HTTP Ingress (extra resource, in this repo)
-    - repoURL: https://github.com/YOUR_USER/one-vps-platform.git
+    - repoURL: https://github.com/YOUR_GITHUB_USER/one-vps-platform.git
       targetRevision: main
       path: k8s/apps/signoz
   destination: { server: https://kubernetes.default.svc, namespace: signoz }

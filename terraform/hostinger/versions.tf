@@ -9,7 +9,7 @@ terraform {
   }
 
   # Local state for now. Once the OCI bucket exists, move to S3-compatible:
-  # backend "s3" { bucket = "onevps-tfstate" key = "hostinger.tfstate" ... }
+  # backend "s3" { bucket = "<your-tfstate-bucket>" key = "hostinger.tfstate" ... }
 }
 
 provider "hostinger" {

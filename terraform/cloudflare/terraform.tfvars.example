@@ -1,2 +1,3 @@
+zone             = "YOUR_DOMAIN.example"
 zone_id          = "YOUR_CLOUDFLARE_ZONE_ID"
-vps_tailscale_ip = "100.64.0.10"
+vps_tailscale_ip = "YOUR_VPS_TAILSCALE_IP" # 100.x.y.z, printed by ansible/playbooks/tailscale.yml

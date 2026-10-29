@@ -13,12 +13,12 @@ kubectl -n argocd rollout status statefulset/argocd-application-controller --tim
 kubectl -n argocd rollout status deploy/argocd-repo-server --timeout=180s
 
 # Repo is private: ArgoCD needs a read credential.
-# Create a fine-grained PAT (Contents: read) on the YOUR_USER account and export GITHUB_TOKEN.
+# Create a fine-grained PAT (Contents: read) on the YOUR_GITHUB_USER account and export GITHUB_TOKEN.
 if [[ -n "${GITHUB_TOKEN:-}" ]]; then
   kubectl -n argocd create secret generic repo-one-vps-platform \
     --from-literal=type=git \
-    --from-literal=url=https://github.com/YOUR_USER/one-vps-platform.git \
-    --from-literal=username=YOUR_USER \
+    --from-literal=url=https://github.com/YOUR_GITHUB_USER/one-vps-platform.git \
+    --from-literal=username=YOUR_GITHUB_USER \
     --from-literal=password="$GITHUB_TOKEN" \
     --dry-run=client -o yaml | kubectl apply -f -
   kubectl -n argocd label secret repo-one-vps-platform argocd.argoproj.io/secret-type=repository --overwrite
